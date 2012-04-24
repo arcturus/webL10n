@@ -25,6 +25,7 @@ document.webL10n = (function(window, document, undefined) {
   var gL10nData = {};
   var gTextData = '';
   var gLanguage = '';
+  var gParsedFiles = [];
 
   // parser
 
@@ -47,39 +48,60 @@ document.webL10n = (function(window, document, undefined) {
     var reSection = /^\s*\[(.*)\]\s*$/;
     var reImport = /^\s*@import\s+url\((.*)\)\s*$/i;
 
-    // parse the *.properties file into an associative array
     var currentLang = '*';
     var supportedLang = [];
-    var skipLang = false;
     var data = [];
     var match = '';
-    var entries = text.replace(reBlank, '').split(/[\r\n]+/);
-    for (var i = 0; i < entries.length; i++) {
-      var line = entries[i];
 
-      // comment or blank line?
-      if (reComment.test(line))
-        continue;
+    // parse the *.properties file into an associative array
+    function parseRawLines(theText, checkLang) {
+      var skipLang = false;
+      var entries = theText.replace(reBlank, '').split(/[\r\n]+/);
+      for (var i = 0; i < entries.length; i++) {
+        var line = entries[i];
 
-      // section start?
-      if (reSection.test(line)) {
-        match = reSection.exec(line);
-        currentLang = match[1];
-        skipLang = (currentLang != lang) && (currentLang != '*');
-        continue;
-      } else if (skipLang)
-        continue;
+        // comment or blank line?
+        if (reComment.test(line))
+          continue;
 
-      // @import rule?
-      if (reImport.test(line)) {
-        match = reImport.exec(line);
+        // section start? 
+        if(checkLang) { //For import files we won't have the language sections
+          if (reSection.test(line)) {
+            match = reSection.exec(line);
+            currentLang = match[1];
+            skipLang = (currentLang != lang) && (currentLang != '*');
+            continue;
+          } else if (skipLang) {
+            continue;
+          }
+        }
+
+        // @import rule?
+        if (reImport.test(line)) {
+          match = reImport.exec(line);
+          loadImport(match[1]); //Will load the resource synchronously
+        }
+
+        // key-value pair
+        var tmp = line.split('=');
+        if (tmp.length > 1)
+          data[tmp[0]] = evalString(tmp[1]);
       }
-
-      // key-value pair
-      var tmp = line.split('=');
-      if (tmp.length > 1)
-        data[tmp[0]] = evalString(tmp[1]);
     }
+    
+    //Load a resource checking that we don't have any cycle
+    function loadImport(resource) {
+      if(gParsedFiles.indexOf(resource) > -1) {
+        console.log('Cycle detected with resource: ' + resource);
+        return;
+      }
+            
+      loadResource(resource, function(content){
+        parseRawLines(content, false);
+      }, false, false);
+    }
+    
+    parseRawLines(text, true);
 
     // find the attribute descriptions, if any
     for (var key in data) {
@@ -108,23 +130,35 @@ document.webL10n = (function(window, document, undefined) {
     return parseProperties(text, lang);
   }
 
-  // load and parse the specified resource file
-  function loadResource(href, lang, onSuccess, onFailure) {
+  // just load a resource and returns the content to the specific callback
+  function loadResource(res, onSuccess, onFailure, asynchronous) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', href, true);
+    xhr.open('GET', res, asynchronous ? true : false);
     xhr.onreadystatechange = function() {
-      if (xhr.readyState == 4) {
+      if(xhr.readyState == 4) {
         if (xhr.status == 200) {
-          parse(xhr.responseText, lang);
-          if (onSuccess)
-            onSuccess();
+          gParsedFiles.push(res); //Save the parsed files to detect cycles
+          if(onSuccess) {
+            onSuccess(xhr.responseText);
+          }
         } else {
-          if (onFailure)
+          if(onFailure) {
             onFailure();
+          }
         }
       }
     };
     xhr.send(null);
+  }
+
+  // load and parse the specified resource file
+  function loadAndParse(href, lang, onSuccess, onFailure) {
+    loadResource(href, function(response){
+      parse(response, lang);
+      if(onSuccess) {
+        onSuccess();
+      }
+    }, onFailure, true);
   }
 
   // load and parse all resources for the specified locale
@@ -157,9 +191,10 @@ document.webL10n = (function(window, document, undefined) {
     function l10nResourceLink(link) {
       var href = link.href;
       var type = link.type;
+      gParsedFiles.push(href); //This should go in the success callback, but the imports will load synchronously
       this.load = function(lang, callback) {
         var applied = lang;
-        loadResource(href, lang, callback, function() {
+        loadAndParse(href, lang, callback, function() {
           console.warn(href + ' not found.');
           applied = '';
         });
@@ -269,6 +304,7 @@ document.webL10n = (function(window, document, undefined) {
     gL10nData = {};
     gTextData = '';
     gLanguage = '';
+    gParsedFiles = [];
   }
 
   // load the default locale on startup
