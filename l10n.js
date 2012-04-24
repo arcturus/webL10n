@@ -65,7 +65,7 @@ document.webL10n = (function(window, document, undefined) {
           continue;
 
         // section start? 
-        if(checkLang) { //For import files we won't have the language sections
+        if (checkLang) { //For import files we won't have the language sections
           if (reSection.test(line)) {
             match = reSection.exec(line);
             currentLang = match[1];
@@ -91,7 +91,7 @@ document.webL10n = (function(window, document, undefined) {
     
     //Load a resource checking that we don't have any cycle
     function loadImport(resource) {
-      if(gParsedFiles.indexOf(resource) > -1) {
+      if (gParsedFiles.indexOf(resource) > -1) {
         console.log('Cycle detected with resource: ' + resource);
         return;
       }
@@ -135,14 +135,14 @@ document.webL10n = (function(window, document, undefined) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', res, asynchronous);
     xhr.onreadystatechange = function() {
-      if(xhr.readyState == 4) {
+      if (xhr.readyState == 4) {
         if (xhr.status == 200) {
           gParsedFiles.push(res); //Save the parsed files to detect cycles
-          if(onSuccess) {
+          if (onSuccess) {
             onSuccess(xhr.responseText);
           }
         } else {
-          if(onFailure) {
+          if (onFailure) {
             onFailure();
           }
         }
