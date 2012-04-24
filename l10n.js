@@ -89,7 +89,7 @@ document.webL10n = (function(window, document, undefined) {
       }
     }
     
-    //Load a resource checking that we don't have any cycle
+    // Load a resource checking that we don't have any cycle
     function loadImport(resource) {
       if (gParsedFiles.indexOf(resource) > -1) {
         console.log('Cycle detected with resource: ' + resource);
@@ -137,7 +137,7 @@ document.webL10n = (function(window, document, undefined) {
     xhr.onreadystatechange = function() {
       if (xhr.readyState == 4) {
         if (xhr.status == 200) {
-          gParsedFiles.push(res); //Save the parsed files to detect cycles
+          gParsedFiles.push(res); // Save the parsed files to detect cycles
           if (onSuccess) {
             onSuccess(xhr.responseText);
           }
@@ -191,7 +191,7 @@ document.webL10n = (function(window, document, undefined) {
     function l10nResourceLink(link) {
       var href = link.href;
       var type = link.type;
-      gParsedFiles.push(href); //This should go in the success callback, but the imports will load synchronously
+      gParsedFiles.push(href); // save it, @includes will be load synchronously
       this.load = function(lang, callback) {
         var applied = lang;
         loadAndParse(href, lang, callback, function() {
