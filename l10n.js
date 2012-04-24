@@ -133,7 +133,7 @@ document.webL10n = (function(window, document, undefined) {
   // just load a resource and returns the content to the specific callback
   function loadResource(res, onSuccess, onFailure, asynchronous) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', res, asynchronous ? true : false);
+    xhr.open('GET', res, asynchronous);
     xhr.onreadystatechange = function() {
       if(xhr.readyState == 4) {
         if (xhr.status == 200) {
